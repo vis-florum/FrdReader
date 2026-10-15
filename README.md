@@ -57,11 +57,6 @@ are stored as written by CalculiX, without application-specific corrections.
 Rebuild the Python extension to use this API; a previously installed binary
 will not include it.
 
-The integration with `origin/main` retains its `frd_reader2` implementation and
-updated signatures. The Python-facing `frd_reader` keeps the step-indexed result
-maps required by its implementation and by callers using `reader.values[step]`.
-The local Python packaging and struct-packing fixes are also retained.
-
 After building/installing `pyfrd`, run the standalone regression tests:
 
 ```bash
