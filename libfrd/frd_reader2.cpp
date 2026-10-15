@@ -60,34 +60,7 @@ void frd_reader2::read(const char* frd_path)
     mEnd = ptr + length;
     bool kill = false;
 
-    // Initial scan (if needed)
     int line_length = 0;
-    int channels = 4; // node_id, X, Y, and Z
-    std::vector<size_t> dataset_positions;
-
-    while (ptr < mEnd && !kill)
-    {
-        line_length = get_line(ptr, mEnd);
-        if (line_length < 6)
-        {
-            ptr += line_length;
-            continue;
-        }
-
-        // Get block code
-        std::string code(ptr, 6);
-        ltrim(code);
-        rtrim(code);
-
-        // End of file!
-        if (code == "9999") break;
-
-        // Implement additional initial scan logic if necessary
-        // ...
-    }
-
-    // Reset pointer to beginning
-    ptr = buffer.data();
     while (ptr < mEnd && !kill)
     {
         // Read buffer until next linebreak
@@ -283,8 +256,13 @@ void frd_reader2::read(const char* frd_path)
                 }
             }
         }
-        std::cout << "Done." << std::endl;
+        else
+        {
+            std::cout << "Unrecognized code encountered: '" << code << "'" << std::endl;
+            break;
+        }
     }
+    std::cout << "Done." << std::endl;
 }
 
 int frd_reader2::get(size_t step_id, const std::string& field, const std::string& component, size_t node_id, double &result)
@@ -397,19 +375,24 @@ int frd_reader2::get(size_t step_id, const std::string& field, const std::string
     if (step_offset < 1 || field_offset < 1 || component_offset < 1)
         return -1;
 
-    size_t i = 0;
-    for (size_t j = 0; j < node_ids.size(); ++j)
+    // Resolve each requested node independently, including out-of-order IDs.
+    // Append only when every node exists, so a failed lookup leaves results intact.
+    std::vector<double> matches;
+    for (size_t node_id : node_ids)
     {
-        while (i < num_nodes)
+        bool node_found = false;
+        for (size_t i = 0; i < static_cast<size_t>(num_nodes); ++i)
         {
-            if (static_cast<size_t>(data[i * row_step]) == node_ids[j])
+            if (static_cast<size_t>(data[i * row_step]) == node_id)
             {
-                results.push_back(data[i * row_step + step_offset + field_offset + component_offset]);
-                break; // Found the node, move to next node_id
+                matches.push_back(data[i * row_step + step_offset + field_offset + component_offset]);
+                node_found = true;
+                break;
             }
-            i++;
         }
+        if (!node_found) return -1;
     }
+    results.insert(results.end(), matches.begin(), matches.end());
 
     return 0;
 }
